@@ -1,0 +1,14 @@
+---
+- name: Configuring Mongodb master and replica
+  hosts: _infra_server
+  become: true
+  tasks:
+    - name: Setting up master server
+      include_role:
+        name: mongodb_master_role
+      when: hostvars[inventory_hostname]['tags']['Name'] == "mongodb-server-0"
+
+    - name: Setting up replica server
+      include_role:
+        name: mongodb_replica_role
+      when: hostvars[inventory_hostname]['tags']['Name'] == "mongodb-server-1"

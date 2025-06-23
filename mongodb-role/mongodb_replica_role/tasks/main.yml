@@ -1,0 +1,55 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    
+- name: Install MongoDB
+  apt:
+    name: mongodb-org
+    state: present
+    update_cache: yes
+
+- name: Create data directory
+  file:
+    path: /data/db
+    state: directory
+    owner: mongodb
+    group: mongodb
+    mode: '0755'
+
+- name: Copy mongod.conf template
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart MongoDB
+
+- name: Start and enable MongoDB service
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+
+- name: Wait for MongoDB to be ready
+  wait_for:
+    host: localhost
+    port: "{{ mongodb_port }}"
+    timeout: 30
+
+- name: Get Mongodb Master IP
+  set_fact:
+    mongodb_master_ip: "{{ groups['_infra_server'] | map('extract', hostvars, ['tags', 'Name']) | zip(groups['_infra_server']) | selectattr('0', 'equalto', 'mongodb-server-0') | map(attribute='1') | map('extract', hostvars, ['private_ip_address']) | first }}"
+
+- name: Get Mongodb Replica IP
+  set_fact:
+    mongodb_replica_ip: "{{ groups['_infra_server'] | map('extract', hostvars, ['tags', 'Name']) | zip(groups['_infra_server']) | selectattr('0', 'equalto', 'mongodb-server-1') | map(attribute='1') | map('extract', hostvars, ['private_ip_address']) | first }}"
+
+
+- name: Add this node to replica set via primary
+  shell: |
+    mongo --host {{ mongodb_master_ip }} --eval 'rs.add("{{ mongodb_replica_ip }}:{{ mongodb_port }}")'
+  delegate_to: "{{ mongodb_master_ip }}"
+  run_once: true
+

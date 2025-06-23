@@ -1,0 +1,5 @@
+mongodb_port: 27017
+mongodb_replset: rs0
+mongodb_bind_ip: 0.0.0.0
+primary_mongo_host: "192.168.1.10"   # Replace with your actual primary host
+
