@@ -3,6 +3,18 @@
   apt:
     update_cache: yes
     
+- name: Add MongoDB GPG key
+  apt_key:
+    url: "https://www.mongodb.org/static/pgp/server-6.0.asc"
+    state: present
+
+- name: Add MongoDB repository
+  apt_repository:
+    repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/6.0 multiverse"
+    state: present
+    filename: mongodb-org-6.0
+    update_cache: yes
+
 - name: Install MongoDB
   apt:
     name: mongodb-org
@@ -46,10 +58,8 @@
   set_fact:
     mongodb_replica_ip: "{{ groups['_infra_server'] | map('extract', hostvars, ['tags', 'Name']) | zip(groups['_infra_server']) | selectattr('0', 'equalto', 'mongodb-server-1') | map(attribute='1') | map('extract', hostvars, ['private_ip_address']) | first }}"
 
-
 - name: Add this node to replica set via primary
   shell: |
     mongo --host {{ mongodb_master_ip }} --eval 'rs.add("{{ mongodb_replica_ip }}:{{ mongodb_port }}")'
   delegate_to: "{{ mongodb_master_ip }}"
   run_once: true
-
